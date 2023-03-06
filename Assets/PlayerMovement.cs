@@ -1,78 +1,70 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
     public float moveSpeed = 5f;
     public float jumpForce = 10f;
-    public int maxJumps = 2; // set to 2 for double jump
-    public PhysicsMaterial2D slipperyMaterial;
-    public PhysicsMaterial2D stickyMaterial;
-    private Rigidbody2D rb;
-    private int jumpsRemaining;
-    private Collider2D playerCollider;
-    private bool isCollidingWithPlatform;
+    public int maxJumps = 2;
 
-    // Start is called before the first frame update
-    void Start()
+    private Rigidbody2D rb;
+    private Collider2D coll;
+
+    private bool isGrounded;
+    private bool canJump;
+    private int jumpsRemaining;
+
+    private void Start()
     {
         rb = GetComponent<Rigidbody2D>();
+        coll = GetComponent<Collider2D>();
         jumpsRemaining = maxJumps;
-        playerCollider = GetComponent<Collider2D>();
-        playerCollider.sharedMaterial = stickyMaterial; // start with sticky material
     }
 
-    // Update is called once per frame
-    void Update()
+    private void Update()
     {
-        // Move left or right
-        float horizontalInput = Input.GetAxis("Horizontal");
+        float moveInput = Input.GetAxisRaw("Horizontal");
+        rb.velocity = new Vector2(moveInput * moveSpeed, rb.velocity.y);
 
-        // Disable horizontal movement if colliding with platform
-        if (isCollidingWithPlatform)
+        if (Input.GetKeyDown(KeyCode.Space) && canJump)
         {
-            horizontalInput = 0f;
+            Jump();
         }
 
-        transform.position += new Vector3(horizontalInput * moveSpeed * Time.deltaTime, 0, 0);
-
-        // Jump
-        if (Input.GetKeyDown(KeyCode.Space) && jumpsRemaining > 0)
+        if (isGrounded)
         {
-            rb.velocity = new Vector2(rb.velocity.x, jumpForce);
-            jumpsRemaining--;
-
-            // Play jump sound or animation
+            canJump = true;
+            jumpsRemaining = maxJumps;
+        }
+        else if (jumpsRemaining <= 0)
+        {
+            canJump = false;
         }
     }
 
-    // Check for collision with ground to reset jumps and adjust friction
     private void OnCollisionEnter2D(Collision2D collision)
     {
         if (collision.gameObject.CompareTag("Ground"))
         {
-            jumpsRemaining = maxJumps;
-            playerCollider.sharedMaterial = slipperyMaterial; // switch to slippery material
-        }
-        else if (collision.gameObject.CompareTag("Platform") || collision.gameObject.CompareTag("Wall"))
-        {
-            playerCollider.isTrigger = true; // disable collider to prevent sticking
-            isCollidingWithPlatform = true;
+            isGrounded = true;
         }
     }
 
-    // Check for leaving ground or platform to switch back to sticky material
     private void OnCollisionExit2D(Collision2D collision)
     {
         if (collision.gameObject.CompareTag("Ground"))
         {
-            playerCollider.sharedMaterial = stickyMaterial; // switch back to sticky material
+            isGrounded = false;
         }
-        else if (collision.gameObject.CompareTag("Platform") || collision.gameObject.CompareTag("Wall"))
+    }
+
+    private void Jump()
+    {
+        rb.velocity = new Vector2(rb.velocity.x, jumpForce);
+        jumpsRemaining--;
+
+        if (jumpsRemaining <= 0)
         {
-            playerCollider.isTrigger = false; // re-enable collider
-            isCollidingWithPlatform = false;
+            canJump = false;
         }
     }
 }
